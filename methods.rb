@@ -138,114 +138,206 @@ end
 
 
 
-  def time_rand (begin_date, end_date)
-    begin_date = begin_date.split("-")
-    end_date = end_date.split("-")
-    bgn_year = begin_date[0].to_i
-    end_year = end_date[0].to_i
-    bgn_month = begin_date[1].to_i
-    end_month = end_date[1].to_i
-    bgn_day = begin_date[2].to_i
-    end_day = end_date[2].to_i
-    new_bgn_date = Date.new(bgn_year, bgn_month, bgn_day)
-    new_end_date = Date.new(end_year, end_month, end_day)
-    return rand(new_bgn_date...new_end_date)
-  end
-
-
+def time_rand (begin_date, end_date)
+  rand(Date.parse(begin_date)..Date.parse(end_date))
+end
 
 def get_random_last_names(num, client)
-  qry = "select last_name as l_names from last_names ORDER BY RAND();"
-  @results = @results ? @results : client.query(qry).to_a
-  ary_of_names = []
-  @results.each do |v|
-    num.times do ary_of_names << "#{v['last_name']}" end
-  end
-  puts ary_of_names
+  qry = "select last_name from last_names"
+  @last_names = @last_names ? @last_names : client.query(qry).to_a
+  @last_names.sample(num).map { |v| "#{v['last_name']}" }
 end
-
-
 
 def get_random_first_names (num, client)
-    qry = "select FirstName AS names FROM male_names
-UNION
-select names as names from female_names;"
-    @results = @results ? @results : client.query(qry).to_a
-
-    end_ary = []
-    ary_of_names = []
-
-    @results.each do |v|
-      num.times do ary_of_names << "#{v['names']}" end
-    end
-
-    ary_of_names.uniq!
-
-    num.times do sample = ary_of_names.sample
-      end_ary << sample
-      ary_of_names.delete(sample)
-     end
-
-    if end_ary.size > num
-    until end_ary == num
-      end_ary.pop
-    end
-    end
-    return end_ary
-  end
-
-
-
-
-
-
-
-def random_names(num, client)
-  f_qry = "select FirstName as first_names FROM male_names
-UNION
-select names as first_names FROM female_names;"
-  s_qry = "select last_name as l_names from last_names ORDER BY RAND();"
-
-  @last_name_results = @last_name_results ? @last_name_results : client.query(s_qry).to_a
-  @first_name_results = @first_name_results ? @first_name_results : client.query(f_qry).to_a
-
-  value_insert = ""
-  lst_names = []
-  frst_names = []
-  insert_qry = "insert into random_people_seth (first_name, last_name, birthdate) VALUES "
-
-
-  @last_name_results.each do |v|
-    num.times do lst_names << "#{v['l_names']}" end
-  end
-
-  @first_name_results.each do |l|
-    frst_names << "#{l['first_names']}"
-  end
-
-  num.times do
-    last_name_sample = lst_names.sample
-    first_name_sample = frst_names.sample
-    begin_date = "1905-01-01"
-    end_date = "2020-12-31"
-    begin_date = begin_date.split("-")
-    end_date = end_date.split("-")
-    bgn_year = begin_date[0].to_i
-    end_year = end_date[0].to_i
-    bgn_month = begin_date[1].to_i
-    end_month = end_date[1].to_i
-    bgn_day = begin_date[2].to_i
-    end_day = end_date[2].to_i
-    new_bgn_date = Date.new(bgn_year, bgn_month, bgn_day)
-    new_end_date = Date.new(end_year, end_month, end_day)
-    random_date = rand(new_bgn_date...new_end_date)
-    value_insert << "('#{first_name_sample}', '#{last_name_sample}', '#{random_date}'),"
-    lst_names.delete(last_name_sample)
-    frst_names.delete(first_name_sample)
-  end
-
-  value_insert.chop!
-  value_insert.concat(";")
-  insert_qry.concat(value_insert)
-  client.query(insert_qry)
+  qry = "select FirstName AS name FROM male_names
+          UNION
+         select names as name from female_names"
+  @first_names = @first_names ? @first_names : client.query(qry).to_a
+  @first_names.sample(num).map { |v| "#{v['name']}" }
 end
+
+
+
+
+
+def random_names(n, client)
+  if n <= 20000
+    qry = "insert into random_people_seth (first_name, last_name, birthdate) VALUES"
+    value_qry = ""
+    n.times do
+      first_name_sample = get_random_first_names(1, client)
+      last_name_sample = get_random_last_names(1, client)
+      time_sample = time_rand("1905-01-01", "2020-12-31")
+      value_qry << "('#{first_name_sample[0]}', '#{last_name_sample[0]}', '#{time_sample}'),"
+    end
+    value_qry.chop! + ";"
+    qry.concat(value_qry)
+    client.query(qry)
+  else
+    random_names(20000, client)
+    random_names(n - 20000, client)
+  end
+end
+
+def word_count(string, substring)
+  string.scan(/(?=#{substring})/).count
+end
+
+def clean(to_clean)
+  clean = ""
+  clean << to_clean
+  clean.gsub!("Elem", " Elementary School")
+  clean.gsub!("Elementary Schoolem", "Elementary School")
+  clean.gsub!("K-12", "Public School")
+  clean.gsub!("H S", "High School")
+  clean.gsub!("HS", "High School")
+  clean = "#{clean} District"
+  clean.sub!("Schls", "Schools")
+  if word_count(clean, "School" || "Schools") > 1
+    if clean.include?("Schools") == true
+      clean.sub!("Schools", "")
+    else
+      clean.sub!("School", "")
+    end
+    clean.gsub!("  ", " ")
+  end
+  clean.gsub!("School Schools", "School")
+  clean.gsub!(" El ", " Elementary School ")
+  clean.gsub!("Dist ", " ")
+  clean.gsub!("  ", " ")
+  return clean
+end
+
+
+
+
+
+
+def mt_dstrct_rprt_crd(client)
+  begin
+    table_creation = "create table montana_public_district_report_card_unique_dist_seth (id INT AUTO_INCREMENT PRIMARY KEY,name varchar(255), clean_name varchar(255), address varchar(255), city varchar(255), state varchar(255), zip varchar(255));"
+    client.query(table_creation)
+    qry = "select distinct school_name AS to_clean_name, address, city, state, zip FROM montana_public_district_report_card;"
+    results = client.query(qry).to_a
+    insrt_qry = "insert ignore into montana_public_district_report_card_unique_dist_seth (name, clean_name, address, city, state, zip) values "
+    results.each do |element|
+      cleaned = clean(element['to_clean_name'])
+      insrt_qry << "('#{element['to_clean_name']}', '#{cleaned}', '#{element['address']}', '#{element['city']}', '#{element['state']}', '#{element['zip']}'),"
+    end
+    insrt_qry.chop! + ";"
+    client.query(insrt_qry)
+  rescue Mysql2::Error
+    new_qry_test = "select distinct school_name, address, city, state, zip FROM montana_public_district_report_card ORDER BY id desc;"
+    testing = client.query(new_qry_test).to_a
+    new_qry_test_two = "select id, name FROM montana_public_district_report_card_unique_dist_seth ORDER BY id desc;"
+    testing_two = client.query(new_qry_test_two).to_a
+    size_check = testing.size - testing_two.size
+
+    if size_check != 0
+      until size_check == 0
+        insert_this = "insert into montana_public_district_report_card_unique_dist_seth (name, clean_name, address, city, state, zip) values ('#{testing[(size_check - 1)]['school_name']}', '#{clean(testing[(size_check - 1)]['school_name'])}', '#{testing[(size_check - 1)]['address']}', '#{testing[(size_check - 1)]['city']}', '#{testing[(size_check - 1)]['state']}', '#{testing[(size_check - 1)]['zip']}');"
+        client.query(insert_this)
+        size_check -= 1
+      end
+    end
+    end
+  end
+
+
+
+
+
+
+
+
+
+
+
+# def mt_dstrct_rprt_crd(client)
+#   check_if_table_exists = "show tables like 'montana_public_district_report_card_unique_dist_seth';"
+#   check_for_table = client.query(check_if_table_exists).to_a
+#   if check_for_table.empty?
+#     table_creation = "create table montana_public_district_report_card_unique_dist_seth (id INT AUTO_INCREMENT PRIMARY KEY,name varchar(255), clean_name varchar(255), address varchar(255), city varchar(255), state varchar(255), zip varchar(255));"
+#     client.query(table_creation)
+#   end
+#   qry = "select distinct school_name AS to_clean_name, address, city, state, zip FROM montana_public_district_report_card;"
+#   results = client.query(qry).to_a
+#   insrt_qry = "insert into montana_public_district_report_card_unique_dist_seth (name, clean_name, address, city, state, zip) values "
+#   results.each do |element|
+#     to_clean = ""
+#     to_clean << "#{element['to_clean_name']}"
+#     clean(to_clean)
+#     insrt_qry << "('#{element['to_clean_name']}', '#{to_clean}', '#{element['address']}', '#{element['city']}', '#{element['state']}', '#{element['zip']}'),"
+#   end
+#   insrt_qry.chop! + ";"
+#   client.query(insrt_qry)
+# end
+
+
+
+
+# Mysql2::error => error
+
+# def random_names(nm, client)
+#   if nm <= 20000
+#      qry = "insert into random_people_seth (first_name, last_name, birthdate) VALUES"
+#      value_qry = ""
+#      nm.times do
+#        first_name_sample = get_random_first_names(1, client)
+#        last_name_sample = get_random_last_names(1, client)
+#        time_sample = time_rand("1905-01-01", "2020-12-31")
+#        value_qry << "('#{first_name_sample[0]}', '#{last_name_sample[0]}', '#{time_sample}'),"
+#      end
+#      value_qry.chop! + ";"
+#      qry.concat(value_qry)
+#      client.query(qry)
+#   elsif nm > 20000
+#    n = nm / 20000
+#     n.times do
+#       random_names(20000, client)
+#     end
+#     if nm % 20000 != 0
+#       re_num = nm % 20000
+#       random_names(re_num, client)
+#       end
+#      end
+#    end
+
+
+
+
+
+
+
+
+
+
+# def random_names(nm, client)
+#   if nm <= 20000
+#     qry = "insert into random_people_seth (first_name, last_name, birthdate) VALUES"
+#     value_qry = ""
+#     nm.times do
+#       first_name_sample = get_random_first_names(1, client)
+#       last_name_sample = get_random_last_names(1, client)
+#       time_sample = time_rand("1905-01-01", "2020-12-31")
+#       value_qry << "('#{first_name_sample[0]}', '#{last_name_sample[0]}', '#{time_sample}'),"
+#     end
+#     value_qry.chop! + ";"
+#     qry.concat(value_qry)
+#     client.query(qry)
+#   else
+#     num = nm / 2
+#     n = 0
+#     if num > 20000
+#      until num <= 20000
+#        num = num / 2
+#        n += 4
+#       end
+#      n.times do
+#      random_names(num, client)
+#      end
+#     end
+#   end
+# end
+#
+
