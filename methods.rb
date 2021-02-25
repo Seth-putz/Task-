@@ -215,7 +215,7 @@ end
 
 def mt_dstrct_rprt_crd(client)
   begin
-    table_creation = "create table montana_public_district_report_card_unique_dist_seth (id INT AUTO_INCREMENT PRIMARY KEY,name varchar(255), clean_name varchar(255), address varchar(255), city varchar(255), state varchar(255), zip varchar(255));"
+    table_creation = "create table montana_public_district_report_card_unique_dist_seth (id INT AUTO_INCREMENT PRIMARY KEY,name varchar(255) UNIQUE, clean_name varchar(255) UNIQUE, address varchar(255), city varchar(255), state varchar(255), zip varchar(255));"
     client.query(table_creation)
     qry = "select distinct school_name AS to_clean_name, address, city, state, zip FROM montana_public_district_report_card;"
     results = client.query(qry).to_a
