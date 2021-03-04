@@ -244,31 +244,32 @@ def mt_dstrct_rprt_crd(client)
   end
 end
 
-
-
+def count_em(string, substring)
+  string.scan(/(?=#{substring})/).count
+end
 def cleaner(string_input)
   str = string_input.dup
   str = str.delete(".")
   str.gsub!("//", "/")
-  if str.count("Hwy") > 1
+  if count_em(str, "Hwy") > 1
     str.sub!("Hwy", "Highway")
     str.gsub!("Hwy", "")
-  elsif str.count("Hwy") == 1
+  elsif count_em(str, "Hwy") == 1
     str.gsub!("Hwy", "Highway")
   end
-  if str.count("hwy") > 1
+  if count_em(str, "hwy") > 1
     str.sub!("hwy", "Highway")
     str.gsub!("hwy", "")
   else
     str.gsub!("hwy", "Highway")
   end
-  if str.count("twp") > 1
+  if count_em(str, "twp") > 1
     str.sub!(/.*\Ktwp/, "Township")
     str.gsub!("twp", "")
   else
     str.sub!("twp", "Township")
   end
-  if str.count("Twp") > 1
+  if count_em(str, "Twp") > 1
     str.sub!(/.*\KTwp/, "Township")
     str.gsub!("Twp", "")
   else
@@ -302,13 +303,24 @@ def cleaner(string_input)
   str[1] = str[1].split.map! {|m| m.capitalize!}.join(" ")
   str = str.join("(")
   end
-  if str.include?("Co "); str.gsub!("County", ""); str.gsub!("Co ", "County"); end
   str.gsub!("Mt", "Mount")
   str.gsub!("Township township", "township")
   str.gsub!("Hgts", "Hights")
   str.gsub!("Ft", "Fort")
-  str.gsub!("  ", " ")
-  return str
+  str.gsub!("St", "Saint")
+  str.gsub!("Village village", "Village")
+  str.gsub!("Countycounty", "County")
+  if str.include?("Co ") && str.include?("County") || str.include?("county")
+    str.sub!("County", "")
+    str.gsub!("Co", "County")
+  end
+  str.gsub!("County county", "County")
+  str.sub!(/.*\KCounty/, "") if count_em(str,"County") >= 2
+  str.gsub!("Park park", "Park")
+  str.gsub!("City city", "City")
+    str.gsub!("   ", " ")
+    str.gsub!("  ", " ")
+    return str
 end
 def clean_office_names(client)
   qry = "select * from hle_dev_test_seth_putz;"
