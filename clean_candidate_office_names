@@ -1,0 +1,95 @@
+def count_em(string, substring)
+  string.scan(/(?=#{substring})/).count
+end
+def cleaner(string_input)
+  str = string_input.dup
+  str = str.delete(".")
+  str.gsub!("//", "/")
+  if count_em(str, "Hwy") > 1
+    str.sub!("Hwy", "Highway")
+    str.gsub!("Hwy", "")
+  elsif count_em(str, "Hwy") == 1
+    str.gsub!("Hwy", "Highway")
+  end
+  if count_em(str, "hwy") > 1
+    str.sub!("hwy", "Highway")
+    str.gsub!("hwy", "")
+  else
+    str.gsub!("hwy", "Highway")
+  end
+  if count_em(str, "twp") > 1
+    str.sub!(/.*\Ktwp/, "Township")
+    str.gsub!("twp", "")
+  else
+    str.sub!("twp", "Township")
+  end
+  if count_em(str, "Twp") > 1
+    str.sub!(/.*\KTwp/, "Township")
+    str.gsub!("Twp", "")
+  else
+    str.sub!("Twp", "Township")
+  end
+  if str.include?("/") == false && str.include?("(") == false
+    str = str.downcase
+  end
+  if str.count("/") >= 2
+    str = str.split("/")
+    str[0],  str[2] = str[2], str[0]
+    str[1], str[2] = str[2], str[1]
+    str[1] = str[1] + " and "
+    str[1] = str[1].downcase
+    str[2] = str[2].downcase
+    str = str.join(" ")
+  elsif str.count("/") == 1
+    str = str.split("/")
+    str[0], str[1] = str[1], str[0].downcase
+    str = str.join(" ")
+  end
+  if str[-1] == ","
+    str.chop!
+  end
+  if str.include?(",")
+    str = str.split(",")
+    str[1] = str[1].strip
+    str[1] = " (#{str[1]})"
+    str = str.join("")
+  end
+  str.gsub!("County County", "County")
+  str.gsub!("County county", "County")
+  if str.include?("(")
+  str = str.split("(")
+  str[1] = str[1].split.map! {|m| m.capitalize!}.join(" ")
+  str = str.join("(")
+  end
+  str.gsub!("Mt", "Mount")
+  str.gsub!("Township township", "township")
+  str.gsub!("Hgts", "Hights")
+  str.gsub!("Ft", "Fort")
+  str.gsub!("St ", "Saint ")
+  str.gsub!("Village village", "Village")
+  str.gsub!("Countycounty", "County")
+  if str.include?("Co ") && str.include?("County") || str.include?("county")
+    str.sub!("County", "")
+    str.gsub!("Co", "County")
+  end
+  str.gsub!("County county", "County")
+  str.sub!(/.*\KCounty/, "") if count_em(str,"County") >= 2
+  str.gsub!("Park park", "Park")
+  str.gsub!("City city", "City")
+  str.gsub!("Countyuntry", "Country")
+  str.gsub!("dist", "district")
+  str.gsub!("Dist", "District")
+    str.gsub!("   ", " ")
+    str.gsub!("  ", " ")
+    return str
+end
+def clean_office_names(client)
+  qry = "select * from hle_dev_test_seth_putz;"
+  run_qry = client.query(qry).to_a
+  num = 0
+  until num == run_qry.size
+    update_query = "update hle_dev_test_seth_putz SET clean_name = \"#{cleaner(run_qry[num]['candidate_office_name'])}\", sentence = \"The candidate is running for the #{cleaner(run_qry[num]['candidate_office_name'])} office.\" WHERE id = '#{run_qry[num]['id']}';"
+    client.query(update_query)
+    num += 1
+  end
+end
