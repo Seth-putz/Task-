@@ -297,7 +297,6 @@ def cleaner(string_input)
   end
   str.gsub!("County County", "County")
   str.gsub!("County county", "County")
-  str.gsub!("'", "")
   if str.include?("(")
   str = str.split("(")
   str[1] = str[1].split.map! {|m| m.capitalize!}.join(" ")
@@ -316,7 +315,7 @@ def clean_office_names(client)
   run_qry = client.query(qry).to_a
   num = 0
   until num == run_qry.size
-    update_query = "update hle_dev_test_seth_putz SET clean_name = '#{cleaner(run_qry[num]['candidate_office_name'])}', sentence = 'The candidate is running for the #{cleaner(run_qry[num]['candidate_office_name'])} office.' WHERE id = '#{run_qry[num]['id']}';"
+    update_query = "update hle_dev_test_seth_putz SET clean_name = \"#{cleaner(run_qry[num]['candidate_office_name'])}\", sentence = \"The candidate is running for the #{cleaner(run_qry[num]['candidate_office_name'])} office.\" WHERE id = '#{run_qry[num]['id']}';"
     client.query(update_query)
     num += 1
   end
